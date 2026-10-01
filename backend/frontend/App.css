@@ -1,0 +1,143 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f5f7fb;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.header {
+  text-align: center;
+  padding: 45px 20px 30px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 38px;
+}
+
+.header p {
+  color: #666;
+  font-size: 17px;
+}
+
+.container {
+  width: 90%;
+  max-width: 900px;
+  margin: auto;
+  padding-bottom: 50px;
+}
+
+.card,
+.result-card,
+.match-card {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 20px;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+}
+
+.card h2,
+.result-card h3,
+.match-card h3 {
+  margin-top: 0;
+}
+
+input[type="file"] {
+  margin-top: 10px;
+}
+
+.file-name {
+  margin-top: 15px;
+  color: #555;
+}
+
+textarea {
+  width: 100%;
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  resize: vertical;
+  font-size: 15px;
+  font-family: Arial, sans-serif;
+}
+
+.analyze-button {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-size: 17px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 25px;
+}
+
+.analyze-button:hover {
+  background: #1d4ed8;
+}
+
+.analyze-button:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+.error {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.results h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.match-card {
+  text-align: center;
+}
+
+.percentage {
+  font-size: 48px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.skill {
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.matched {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.missing {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.ai-analysis {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  color: #333;
+} 
