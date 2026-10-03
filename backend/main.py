@@ -2,98 +2,100 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import pymupdf
 from pydantic import BaseModel
+import re
 
 from ai_service import analyze_with_ai
 from database import engine, Base, SessionLocal
 import models
 
 
-# ---------------------------------------------------------
-# FastAPI App
-# ---------------------------------------------------------
+# =========================================================
+# FASTAPI APP
+# =========================================================
 
 app = FastAPI(
     title="AI Resume Analyzer",
-    description="Analyze resume against job description using Python, SQL and Gemini AI",
-    version="1.0.0"
+    description="AI Resume Analyzer with ATS scoring, skill matching and Gemini AI",
+    version="4.0.0"
 )
 
 
-# ---------------------------------------------------------
+# =========================================================
 # CORS
-# ---------------------------------------------------------
+# =========================================================
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173",  "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ---------------------------------------------------------
-# Create Database Tables
-# ---------------------------------------------------------
+# =========================================================
+# DATABASE
+# =========================================================
 
 Base.metadata.create_all(bind=engine)
 
 
-# ---------------------------------------------------------
-# Skills and Related Terms
-# ---------------------------------------------------------
+# =========================================================
+# SKILL ALIASES
+# =========================================================
 
 SKILL_ALIASES = {
-
-    "python": [
-        "python",
-    ],
+    "python": ["python", "python programming", "python language"],
+    "c++": ["c++", "cpp", "c plus plus"],
+    "java": ["java", "java programming"],
 
     "sql": [
         "sql",
         "sql queries",
-        "sql database",
+        "sql query",
+        "structured query language"
     ],
 
-    "mysql": [
-        "mysql",
-    ],
+    "mysql": ["mysql", "mysql database"],
 
     "postgresql": [
         "postgresql",
         "postgres",
+        "postgres database",
+        "postgresql database"
     ],
 
     "mongodb": [
         "mongodb",
         "mongo db",
-        "mongo",
+        "mongo database",
+        "mongo"
     ],
 
-    "pandas": [
-        "pandas",
-    ],
+    "pandas": ["pandas"],
+    "numpy": ["numpy"],
 
-    "numpy": [
-        "numpy",
-    ],
+    "fastapi": ["fastapi"],
+    "flask": ["flask"],
+    "django": ["django", "django framework"],
 
-    "fastapi": [
-        "fastapi",
-    ],
-
-    "flask": [
-        "flask",
-    ],
-
-    "django": [
-        "django",
+    "rest api": [
+        "rest api",
+        "rest apis",
+        "restful api",
+        "restful apis",
+        "rest services"
     ],
 
     "etl": [
         "etl",
         "extract transform load",
         "extract, transform, load",
+        "etl pipeline",
+        "etl pipelines"
     ],
 
     "data engineering": [
@@ -102,98 +104,162 @@ SKILL_ALIASES = {
         "data pipeline",
         "data pipelines",
         "data processing pipeline",
+        "data processing pipelines"
     ],
+
+    "spark": ["apache spark", "spark"],
+    "pyspark": ["pyspark", "python spark"],
 
     "machine learning": [
         "machine learning",
         "machine-learning",
-        "ml",
+        "ml"
     ],
 
     "scikit-learn": [
         "scikit-learn",
         "scikit learn",
-        "sklearn",
+        "sklearn"
     ],
 
-    "tensorflow": [
-        "tensorflow",
-    ],
+    "tensorflow": ["tensorflow"],
+    "pytorch": ["pytorch", "torch"],
 
-    "pytorch": [
-        "pytorch",
-        "torch",
-    ],
-
-    "spark": [
-        "spark",
-        "apache spark",
-    ],
-
-    "pyspark": [
-        "pyspark",
-    ],
-
-    "aws": [
-        "aws",
-        "amazon web services",
-    ],
-
-    "azure": [
-        "azure",
-        "microsoft azure",
-    ],
-
+    "aws": ["aws", "amazon web services"],
+    "azure": ["azure", "microsoft azure"],
     "gcp": [
         "gcp",
         "google cloud",
-        "google cloud platform",
+        "google cloud platform"
     ],
 
     "docker": [
         "docker",
         "containerization",
-        "containers",
+        "containerization technology"
     ],
 
     "git": [
         "git",
         "version control",
+        "version-control"
     ],
 
     "github": [
         "github",
+        "github repository",
+        "github repositories"
     ],
 
-    "rest api": [
-        "rest api",
-        "rest apis",
-        "restful api",
-        "restful apis",
-    ],
-
-    "power bi": [
-        "power bi",
-        "powerbi",
-    ],
-
-    "tableau": [
-        "tableau",
-    ],
+    "power bi": ["power bi", "powerbi"],
+    "tableau": ["tableau"],
 }
 
 
-# ---------------------------------------------------------
-# Normalize Text
-# ---------------------------------------------------------
+# =========================================================
+# SKILL WEIGHTS
+# =========================================================
+
+SKILL_WEIGHTS = {
+    "python": 1.5,
+    "sql": 1.5,
+    "data engineering": 1.5,
+    "etl": 1.4,
+    "pyspark": 1.4,
+    "spark": 1.3,
+
+    "pandas": 1.2,
+    "numpy": 1.0,
+
+    "mysql": 1.0,
+    "postgresql": 1.0,
+    "mongodb": 1.0,
+
+    "aws": 1.2,
+    "azure": 1.2,
+    "gcp": 1.2,
+
+    "machine learning": 1.2,
+    "scikit-learn": 1.1,
+    "tensorflow": 1.1,
+    "pytorch": 1.1,
+
+    "fastapi": 1.0,
+    "flask": 1.0,
+    "django": 1.0,
+    "rest api": 1.0,
+
+    "git": 0.8,
+    "github": 0.8,
+    "docker": 1.0,
+
+    "power bi": 1.0,
+    "tableau": 1.0,
+
+    "c++": 1.0,
+    "java": 1.0,
+}
+
+
+# =========================================================
+# RELATED SKILLS
+# =========================================================
+
+RELATED_SKILLS = {
+    "pyspark": {
+        "spark": 0.5,
+    },
+
+    "spark": {
+        "pyspark": 0.7,
+    },
+
+    "postgresql": {
+        "sql": 0.5,
+    },
+
+    "mysql": {
+        "sql": 0.5,
+    },
+
+    "mongodb": {
+        "sql": 0.25,
+    },
+
+    "machine learning": {
+        "scikit-learn": 0.5,
+        "tensorflow": 0.5,
+        "pytorch": 0.5,
+    },
+
+    "scikit-learn": {
+        "machine learning": 0.5,
+    },
+
+    "tensorflow": {
+        "machine learning": 0.5,
+    },
+
+    "pytorch": {
+        "machine learning": 0.5,
+    },
+
+    "power bi": {
+        "tableau": 0.5,
+    },
+
+    "tableau": {
+        "power bi": 0.5,
+    },
+}
+
+
+# =========================================================
+# TEXT NORMALIZATION
+# =========================================================
 
 def normalize_text(text):
-    """
-    Convert text into a simpler format
-    for better skill matching.
-    """
-
-    text = text.lower()
+    text = (text or "").lower()
 
     replacements = {
         "-": " ",
@@ -203,6 +269,9 @@ def normalize_text(text):
         ")": " ",
         ",": " ",
         ".": " ",
+        ":": " ",
+        ";": " ",
+        "|": " ",
     }
 
     for old, new in replacements.items():
@@ -211,56 +280,255 @@ def normalize_text(text):
     return " ".join(text.split())
 
 
-# ---------------------------------------------------------
-# Extract Skills
-# ---------------------------------------------------------
+# =========================================================
+# SAFE SKILL SEARCH
+# =========================================================
+
+def contains_skill(text, skill_phrase):
+    normalized_text = normalize_text(text)
+    normalized_skill = normalize_text(skill_phrase)
+
+    pattern = (
+        r"(?<![a-z0-9])"
+        + re.escape(normalized_skill)
+        + r"(?![a-z0-9])"
+    )
+
+    return re.search(pattern, normalized_text) is not None
+
+
+# =========================================================
+# EXTRACT SKILLS
+# =========================================================
 
 def extract_skills(text):
-    """
-    Detect skills using skill aliases.
-
-    Example:
-    PostgreSQL or Postgres
-    -> PostgreSQL
-    """
-
-    normalized_text = normalize_text(text)
-
     found_skills = []
 
     for skill, aliases in SKILL_ALIASES.items():
 
         for alias in aliases:
 
-            normalized_alias = normalize_text(alias)
-
-            if normalized_alias in normalized_text:
-
+            if contains_skill(text, alias):
                 found_skills.append(skill)
-
                 break
 
     return found_skills
 
 
-# ---------------------------------------------------------
-# Home Route
-# ---------------------------------------------------------
+# =========================================================
+# CALCULATE SKILL MATCH
+# =========================================================
+
+def calculate_skill_match(resume_skills, jd_skills):
+
+    if not jd_skills:
+        return {
+            "percentage": 0,
+            "matched_skills": [],
+            "missing_skills": [],
+            "related_matches": [],
+        }
+
+    total_weight = 0
+    earned_weight = 0
+
+    matched_skills = []
+    missing_skills = []
+    related_matches = []
+
+    for jd_skill in jd_skills:
+
+        weight = SKILL_WEIGHTS.get(
+            jd_skill,
+            1.0
+        )
+
+        total_weight += weight
+
+        # Direct match
+        if jd_skill in resume_skills:
+
+            earned_weight += weight
+            matched_skills.append(jd_skill)
+
+            continue
+
+        # Related skill match
+        related_options = RELATED_SKILLS.get(
+            jd_skill,
+            {}
+        )
+
+        related_found = False
+
+        for resume_skill, credit in related_options.items():
+
+            if resume_skill in resume_skills:
+
+                earned_weight += weight * credit
+
+                matched_skills.append(jd_skill)
+
+                related_matches.append({
+                    "required_skill": jd_skill,
+                    "resume_skill": resume_skill,
+                    "credit": credit,
+                })
+
+                related_found = True
+                break
+
+        if not related_found:
+            missing_skills.append(jd_skill)
+
+    percentage = round(
+        (earned_weight / total_weight) * 100,
+        2
+    ) if total_weight > 0 else 0
+
+    return {
+        "percentage": percentage,
+        "matched_skills": matched_skills,
+        "missing_skills": missing_skills,
+        "related_matches": related_matches,
+    }
+
+
+# =========================================================
+# ATS SCORE
+# =========================================================
+
+def calculate_ats_score(
+    resume_text,
+    job_description,
+    match_percentage,
+    resume_skills,
+    jd_skills
+):
+    """
+    Project-level ATS-style score.
+
+    Components:
+    70% = Job keyword/skill match
+    20% = Resume section completeness
+    10% = Resume text quality
+    """
+
+    resume_lower = normalize_text(resume_text)
+
+    # -------------------------
+    # 1. Keyword / Skill Match
+    # -------------------------
+
+    keyword_score = float(match_percentage)
+
+    # -------------------------
+    # 2. Resume Sections
+    # -------------------------
+
+    section_keywords = {
+        "summary": [
+            "summary",
+            "professional summary",
+            "objective",
+        ],
+
+        "experience": [
+            "experience",
+            "work experience",
+            "internship",
+        ],
+
+        "education": [
+            "education",
+            "academic",
+        ],
+
+        "skills": [
+            "skills",
+            "technical skills",
+            "technologies",
+        ],
+
+        "projects": [
+            "projects",
+            "project",
+        ],
+    }
+
+    sections_found = 0
+
+    for aliases in section_keywords.values():
+
+        if any(
+            contains_skill(resume_text, alias)
+            for alias in aliases
+        ):
+            sections_found += 1
+
+    section_score = (
+        sections_found / len(section_keywords)
+    ) * 100
+
+    # -------------------------
+    # 3. Resume Text Quality
+    # -------------------------
+
+    word_count = len(resume_lower.split())
+
+    if word_count >= 300:
+        quality_score = 100
+    elif word_count >= 200:
+        quality_score = 85
+    elif word_count >= 100:
+        quality_score = 70
+    elif word_count >= 50:
+        quality_score = 50
+    else:
+        quality_score = 25
+
+    # -------------------------
+    # Final ATS Score
+    # -------------------------
+
+    ats_score = (
+        keyword_score * 0.70
+        + section_score * 0.20
+        + quality_score * 0.10
+    )
+
+    return round(
+        min(max(ats_score, 0), 100),
+        2
+    )
+
+
+# =========================================================
+# HOME
+# =========================================================
 
 @app.get("/")
 def home():
 
     return {
-        "message": "AI Resume Analyzer API is running!"
+        "message": "AI Resume Analyzer API is running!",
+        "version": "4.0.0",
     }
 
 
-# ---------------------------------------------------------
-# Upload Resume
-# ---------------------------------------------------------
+# =========================================================
+# UPLOAD RESUME
+# =========================================================
 
 @app.post("/upload-resume")
-async def upload_resume(file: UploadFile = File(...)):
+async def upload_resume(
+    file: UploadFile = File(...)
+):
+
+    if not file.filename.lower().endswith(".pdf"):
+        return {
+            "error": "Only PDF resumes are supported."
+        }
 
     contents = await file.read()
 
@@ -276,103 +544,100 @@ async def upload_resume(file: UploadFile = File(...)):
 
     pdf.close()
 
+    if not text.strip():
+        return {
+            "error": "Could not extract text from this PDF."
+        }
+
     return {
         "filename": file.filename,
-        "text": text
+        "text": text,
     }
 
 
-# ---------------------------------------------------------
-# Job Description
-# ---------------------------------------------------------
+# =========================================================
+# JOB DESCRIPTION
+# =========================================================
 
 class JobDescription(BaseModel):
-
     text: str
 
 
 @app.post("/job-description")
-def add_job_description(job: JobDescription):
+def add_job_description(
+    job: JobDescription
+):
 
     return {
         "message": "Job description received successfully",
-        "job_description": job.text
+        "job_description": job.text,
     }
 
 
-# ---------------------------------------------------------
-# Resume Match Request
-# ---------------------------------------------------------
+# =========================================================
+# ANALYSIS REQUEST
+# =========================================================
 
 class ResumeMatchRequest(BaseModel):
 
     resume_text: str
     job_description: str
+    resume_filename: str | None = None
 
 
-# ---------------------------------------------------------
-# Analyze Resume
-# ---------------------------------------------------------
+# =========================================================
+# ANALYZE RESUME
+# =========================================================
 
 @app.post("/analyze")
-def analyze_resume(data: ResumeMatchRequest):
+def analyze_resume(
+    data: ResumeMatchRequest
+):
 
-    # ---------------------------------------------
-    # Extract skills from resume
-    # ---------------------------------------------
+    # -------------------------
+    # Extract skills
+    # -------------------------
 
     resume_skills = extract_skills(
         data.resume_text
     )
 
-    # ---------------------------------------------
-    # Extract skills from job description
-    # ---------------------------------------------
-
     jd_skills = extract_skills(
         data.job_description
     )
 
-    # ---------------------------------------------
-    # Find matched skills
-    # ---------------------------------------------
+    # -------------------------
+    # Calculate skill match
+    # -------------------------
 
-    matched_skills = [
-        skill
-        for skill in jd_skills
-        if skill in resume_skills
-    ]
+    match_result = calculate_skill_match(
+        resume_skills,
+        jd_skills
+    )
 
-    # ---------------------------------------------
-    # Find missing skills
-    # ---------------------------------------------
+    match_percentage = match_result["percentage"]
 
-    missing_skills = [
-        skill
-        for skill in jd_skills
-        if skill not in resume_skills
-    ]
+    matched_skills = match_result["matched_skills"]
 
-    # ---------------------------------------------
-    # Calculate Match Percentage
-    # ---------------------------------------------
+    missing_skills = match_result["missing_skills"]
 
-    if len(jd_skills) > 0:
+    related_matches = match_result["related_matches"]
 
-        match_percentage = round(
-            len(matched_skills)
-            / len(jd_skills)
-            * 100,
-            2
-        )
+    # -------------------------
+    # ATS SCORE
+    # -------------------------
 
-    else:
+    ats_score = calculate_ats_score(
+        resume_text=data.resume_text,
+        job_description=data.job_description,
+        match_percentage=match_percentage,
+        resume_skills=resume_skills,
+        jd_skills=jd_skills,
+    )
 
-        match_percentage = 0
-
-    # ---------------------------------------------
+    # -------------------------
     # Gemini AI Analysis
-    # ---------------------------------------------
+    # -------------------------
 
     ai_result = analyze_with_ai(
         data.resume_text,
@@ -380,15 +645,17 @@ def analyze_resume(data: ResumeMatchRequest):
         missing_skills
     )
 
-    # ---------------------------------------------
-    # Save Analysis to Database
-    # ---------------------------------------------
+    # -------------------------
+    # Save to MySQL
+    # -------------------------
 
     db = SessionLocal()
 
     try:
 
         analysis = models.ResumeAnalysis(
+
+            resume_filename=data.resume_filename,
 
             resume_text=data.resume_text,
 
@@ -404,7 +671,7 @@ def analyze_resume(data: ResumeMatchRequest):
                 missing_skills
             ),
 
-            ai_analysis=ai_result
+            ai_analysis=ai_result,
         )
 
         db.add(analysis)
@@ -413,27 +680,42 @@ def analyze_resume(data: ResumeMatchRequest):
 
         db.refresh(analysis)
 
-        # -----------------------------------------
-        # Return Result
-        # -----------------------------------------
-
         return {
 
             "id": analysis.id,
 
-            "resume_skills": resume_skills,
+            "resume_filename":
+                analysis.resume_filename,
 
-            "job_description_skills": jd_skills,
+            "resume_skills":
+                resume_skills,
 
-            "matched_skills": matched_skills,
+            "job_description_skills":
+                jd_skills,
 
-            "missing_skills": missing_skills,
+            "matched_skills":
+                matched_skills,
 
-            "match_percentage": match_percentage,
+            "missing_skills":
+                missing_skills,
 
-            "ai_analysis": ai_result,
+            "match_percentage":
+                match_percentage,
 
-            "message": "Analysis saved successfully"
+            "ats_score":
+                ats_score,
+
+            "related_matches":
+                related_matches,
+
+            "ai_analysis":
+                ai_result,
+
+            "created_at":
+                analysis.created_at,
+
+            "message":
+                "Analysis saved successfully",
         }
 
     finally:
@@ -441,9 +723,9 @@ def analyze_resume(data: ResumeMatchRequest):
         db.close()
 
 
-# ---------------------------------------------------------
-# Analysis History
-# ---------------------------------------------------------
+# =========================================================
+# ANALYSIS HISTORY
+# =========================================================
 
 @app.get("/history")
 def get_analysis_history():
@@ -467,6 +749,12 @@ def get_analysis_history():
             {
                 "id": analysis.id,
 
+                "resume_filename":
+                    analysis.resume_filename,
+
+                "job_description":
+                    analysis.job_description,
+
                 "match_percentage":
                     analysis.match_percentage,
 
@@ -477,7 +765,10 @@ def get_analysis_history():
                     analysis.missing_skills,
 
                 "ai_analysis":
-                    analysis.ai_analysis
+                    analysis.ai_analysis,
+
+                "created_at":
+                    analysis.created_at,
             }
 
             for analysis in analyses
@@ -488,36 +779,133 @@ def get_analysis_history():
 
         db.close()
 
-# ---------------------------------------------------------
-# Delete Analysis
-# ---------------------------------------------------------
 
-@app.delete("/history/{analysis_id}")
-def delete_analysis(analysis_id: int):
+# =========================================================
+# VIEW SINGLE ANALYSIS
+# =========================================================
+
+@app.get("/history/{analysis_id}")
+def get_single_analysis(
+    analysis_id: int
+):
 
     db = SessionLocal()
 
     try:
+
         analysis = (
-            db.query(models.ResumeAnalysis)
+            db.query(
+                models.ResumeAnalysis
+            )
             .filter(
-                models.ResumeAnalysis.id == analysis_id
+                models.ResumeAnalysis.id
+                == analysis_id
             )
             .first()
         )
 
         if not analysis:
+
+            return {
+                "message": "Analysis not found"
+            }
+
+        # Recalculate ATS score for old records
+        resume_skills = extract_skills(
+            analysis.resume_text
+        )
+
+        jd_skills = extract_skills(
+            analysis.job_description
+        )
+
+        ats_score = calculate_ats_score(
+            resume_text=analysis.resume_text,
+            job_description=analysis.job_description,
+            match_percentage=analysis.match_percentage or 0,
+            resume_skills=resume_skills,
+            jd_skills=jd_skills,
+        )
+
+        return {
+
+            "id": analysis.id,
+
+            "resume_filename":
+                analysis.resume_filename,
+
+            "resume_text":
+                analysis.resume_text,
+
+            "job_description":
+                analysis.job_description,
+
+            "match_percentage":
+                analysis.match_percentage,
+
+            "ats_score":
+                ats_score,
+
+            "matched_skills":
+                analysis.matched_skills,
+
+            "missing_skills":
+                analysis.missing_skills,
+
+            "ai_analysis":
+                analysis.ai_analysis,
+
+            "created_at":
+                analysis.created_at,
+        }
+
+    finally:
+
+        db.close()
+
+
+# =========================================================
+# DELETE HISTORY
+# =========================================================
+
+@app.delete("/history/{analysis_id}")
+def delete_analysis(
+    analysis_id: int
+):
+
+    db = SessionLocal()
+
+    try:
+
+        analysis = (
+            db.query(
+                models.ResumeAnalysis
+            )
+            .filter(
+                models.ResumeAnalysis.id
+                == analysis_id
+            )
+            .first()
+        )
+
+        if not analysis:
+
             return {
                 "message": "Analysis not found"
             }
 
         db.delete(analysis)
+
         db.commit()
 
         return {
-            "message": "Analysis deleted successfully",
-            "id": analysis_id
+            "message":
+                "Analysis deleted successfully",
+
+            "id":
+                analysis_id,
         }
 
     finally:
+
         db.close()

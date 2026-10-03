@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, Text, Float
+from sqlalchemy import Column, Integer, Text, Float, DateTime
 from database import Base
+from datetime import datetime
 
 
 class ResumeAnalysis(Base):
@@ -10,6 +11,11 @@ class ResumeAnalysis(Base):
         Integer,
         primary_key=True,
         index=True
+    )
+
+    resume_filename = Column(
+        Text,
+        nullable=True
     )
 
     resume_text = Column(
@@ -36,4 +42,9 @@ class ResumeAnalysis(Base):
 
     ai_analysis = Column(
         Text
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
     )
