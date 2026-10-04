@@ -14,34 +14,24 @@ const API_BASE_URL =
 function App() {
   const [resumeFile, setResumeFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
-
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
-
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("analyzer");
-
-  // =========================
-  // LOAD HISTORY
-  // =========================
 
   const loadHistory = async () => {
     try {
       setHistoryLoading(true);
 
-      const response = await fetch(
-        `${API_BASE_URL}/history`
-      );
+      const response = await fetch(`${API_BASE_URL}/history`);
 
       if (!response.ok) {
         throw new Error("Could not load analysis history.");
       }
 
       const data = await response.json();
-
       setHistory(data);
     } catch (err) {
       console.error(err);
@@ -54,18 +44,12 @@ function App() {
     loadHistory();
   }, []);
 
-  // =========================
-  // ANALYZE RESUME
-  // =========================
-
   const handleAnalyze = async () => {
-    // Resume validation
     if (!resumeFile) {
       setError("Please upload your resume PDF.");
       return;
     }
 
-    // PDF validation
     if (
       resumeFile.type !== "application/pdf" &&
       !resumeFile.name.toLowerCase().endsWith(".pdf")
@@ -74,13 +58,11 @@ function App() {
       return;
     }
 
-    // Job description validation
     if (!jobDescription.trim()) {
       setError("Please enter the job description.");
       return;
     }
 
-    // Minimum JD validation
     if (jobDescription.trim().length < 50) {
       setError(
         "Job description is too short. Please enter a complete job description."
@@ -93,12 +75,7 @@ function App() {
     setResult(null);
 
     try {
-      // =========================
-      // UPLOAD RESUME
-      // =========================
-
       const formData = new FormData();
-
       formData.append("file", resumeFile);
 
       const resumeResponse = await fetch(
@@ -110,41 +87,28 @@ function App() {
       );
 
       if (!resumeResponse.ok) {
-        const errorData =
-          await resumeResponse.json().catch(() => null);
+        const errorData = await resumeResponse.json().catch(() => null);
 
         throw new Error(
-          errorData?.detail ||
-            "Resume upload failed."
+          errorData?.detail || "Resume upload failed."
         );
       }
 
-      const resumeData =
-        await resumeResponse.json();
+      const resumeData = await resumeResponse.json();
 
-      // Check extracted resume text
-      if (
-        !resumeData.text ||
-        !resumeData.text.trim()
-      ) {
+      if (!resumeData.text || !resumeData.text.trim()) {
         throw new Error(
           "Could not extract text from this PDF. Please upload a text-based resume PDF."
         );
       }
 
-      // =========================
-      // ANALYZE RESUME
-      // =========================
-
       const analyzeResponse = await fetch(
         `${API_BASE_URL}/analyze`,
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
           },
-
           body: JSON.stringify({
             resume_text: resumeData.text,
             job_description: jobDescription,
@@ -154,38 +118,28 @@ function App() {
       );
 
       if (!analyzeResponse.ok) {
-        const errorData =
-          await analyzeResponse.json().catch(() => null);
+        const errorData = await analyzeResponse.json().catch(() => null);
 
         throw new Error(
-          errorData?.detail ||
-            "Resume analysis failed."
+          errorData?.detail || "Resume analysis failed."
         );
       }
 
-      const analysisData =
-        await analyzeResponse.json();
+      const analysisData = await analyzeResponse.json();
 
       setResult(analysisData);
 
       await loadHistory();
-
     } catch (err) {
       console.error(err);
 
       setError(
-        err.message ||
-          "Something went wrong. Please try again."
+        err.message || "Something went wrong. Please try again."
       );
-
     } finally {
       setLoading(false);
     }
   };
-
-  // =========================
-  // VIEW HISTORY DETAILS
-  // =========================
 
   const handleViewDetails = async (id) => {
     try {
@@ -196,34 +150,24 @@ function App() {
       );
 
       if (!response.ok) {
-        throw new Error(
-          "Could not load analysis details."
-        );
+        throw new Error("Could not load analysis details.");
       }
 
       const data = await response.json();
 
       setResult(data);
-
       setActiveTab("analyzer");
-
     } catch (err) {
       setError(err.message);
     }
   };
-
-  // =========================
-  // DELETE HISTORY
-  // =========================
 
   const handleDelete = async (id) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this analysis?"
     );
 
-    if (!confirmDelete) {
-      return;
-    }
+    if (!confirmDelete) return;
 
     try {
       const response = await fetch(
@@ -234,9 +178,7 @@ function App() {
       );
 
       if (!response.ok) {
-        throw new Error(
-          "Could not delete analysis."
-        );
+        throw new Error("Could not delete analysis.");
       }
 
       await loadHistory();
@@ -244,29 +186,16 @@ function App() {
       if (result && result.id === id) {
         setResult(null);
       }
-
     } catch (err) {
       setError(err.message);
     }
   };
 
-  // =========================
-  // FORMAT DATE
-  // =========================
-
   const formatDate = (dateString) => {
-    if (!dateString) {
-      return "Date unavailable";
-    }
+    if (!dateString) return "Date unavailable";
 
-    return new Date(
-      dateString
-    ).toLocaleString();
+    return new Date(dateString).toLocaleString();
   };
-
-  // =========================
-  // DASHBOARD CALCULATIONS
-  // =========================
 
   const totalAnalyses = history.length;
 
@@ -275,10 +204,7 @@ function App() {
       ? (
           history.reduce(
             (sum, item) =>
-              sum +
-              Number(
-                item.match_percentage || 0
-              ),
+              sum + Number(item.match_percentage || 0),
             0
           ) / totalAnalyses
         ).toFixed(2)
@@ -288,29 +214,20 @@ function App() {
     totalAnalyses > 0
       ? Math.max(
           ...history.map((item) =>
-            Number(
-              item.match_percentage || 0
-            )
+            Number(item.match_percentage || 0)
           )
         ).toFixed(2)
       : 0;
 
-  // =========================
-  // COMMON MISSING SKILLS
-  // =========================
-
   const missingSkillCount = {};
 
   history.forEach((item) => {
-    if (!item.missing_skills) {
-      return;
-    }
+    if (!item.missing_skills) return;
 
-    const skills =
-      item.missing_skills
-        .split(",")
-        .map((skill) => skill.trim())
-        .filter(Boolean);
+    const skills = item.missing_skills
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean);
 
     skills.forEach((skill) => {
       missingSkillCount[skill] =
@@ -318,34 +235,25 @@ function App() {
     });
   });
 
-  const commonMissingSkills =
-    Object.entries(missingSkillCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8);
-
-  // =========================
-  // DOWNLOAD PDF REPORT
-  // =========================
+  const commonMissingSkills = Object.entries(
+    missingSkillCount
+  )
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
 
   const downloadPDF = () => {
     if (!result) {
-      setError(
-        "Please analyze a resume first."
-      );
+      setError("Please analyze a resume first.");
       return;
     }
 
     const doc = new jsPDF();
 
-    const pageWidth =
-      doc.internal.pageSize.getWidth();
-
-    const pageHeight =
-      doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
     let y = 20;
 
-    // Helper function
     const addWrappedText = (
       text,
       x,
@@ -353,86 +261,51 @@ function App() {
       maxWidth = 180,
       lineHeight = 6
     ) => {
-      const safeText = String(
-        text || ""
+      const safeText = String(text || "");
+
+      const lines = doc.splitTextToSize(
+        safeText,
+        maxWidth
       );
 
-      const lines =
-        doc.splitTextToSize(
-          safeText,
-          maxWidth
-        );
-
       for (const line of lines) {
-        if (
-          yPosition >
-          pageHeight - 20
-        ) {
+        if (yPosition > pageHeight - 20) {
           doc.addPage();
           yPosition = 20;
         }
 
-        doc.text(
-          line,
-          x,
-          yPosition
-        );
-
+        doc.text(line, x, yPosition);
         yPosition += lineHeight;
       }
 
       return yPosition;
     };
 
-    // =========================
-    // TITLE
-    // =========================
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(22);
 
     doc.text(
       "AI Resume Analyzer",
       pageWidth / 2,
       y,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     y += 10;
 
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
 
     doc.text(
       "Resume Analysis Report",
       pageWidth / 2,
       y,
-      {
-        align: "center",
-      }
+      { align: "center" }
     );
 
     y += 15;
 
-    // =========================
-    // RESUME INFORMATION
-    // =========================
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
 
     doc.text(
@@ -443,11 +316,7 @@ function App() {
 
     y += 9;
 
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
     y = addWrappedText(
@@ -472,15 +341,7 @@ function App() {
 
     y += 7;
 
-    // =========================
-    // SCORE SECTION
-    // =========================
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
 
     doc.text(
@@ -491,11 +352,7 @@ function App() {
 
     y += 10;
 
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
 
     y = addWrappedText(
@@ -516,15 +373,7 @@ function App() {
 
     y += 7;
 
-    // =========================
-    // MATCHED SKILLS
-    // =========================
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
 
     doc.text(
@@ -535,11 +384,7 @@ function App() {
 
     y += 9;
 
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
     const matchedSkills =
@@ -561,15 +406,7 @@ function App() {
 
     y += 7;
 
-    // =========================
-    // MISSING SKILLS
-    // =========================
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
 
     doc.text(
@@ -580,11 +417,7 @@ function App() {
 
     y += 9;
 
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
     const missingSkills =
@@ -606,15 +439,7 @@ function App() {
 
     y += 7;
 
-    // =========================
-    // SKILL GAP
-    // =========================
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
 
     doc.text(
@@ -625,23 +450,17 @@ function App() {
 
     y += 9;
 
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
     if (missingSkills.length > 0) {
-      missingSkills.forEach(
-        (skill) => {
-          y = addWrappedText(
-            `• ${skill}`,
-            15,
-            y
-          );
-        }
-      );
+      missingSkills.forEach((skill) => {
+        y = addWrappedText(
+          `• ${skill}`,
+          15,
+          y
+        );
+      });
     } else {
       y = addWrappedText(
         "No significant skill gaps detected.",
@@ -652,22 +471,14 @@ function App() {
 
     y += 7;
 
-    // =========================
-    // JOB DESCRIPTION
-    // =========================
-
     if (result.job_description) {
-      doc.setFont(
-        "helvetica",
-        "bold"
-      );
-
-      doc.setFontSize(15);
-
       if (y > pageHeight - 30) {
         doc.addPage();
         y = 20;
       }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(15);
 
       doc.text(
         "Job Description",
@@ -677,11 +488,7 @@ function App() {
 
       y += 9;
 
-      doc.setFont(
-        "helvetica",
-        "normal"
-      );
-
+      doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
 
       y = addWrappedText(
@@ -695,20 +502,12 @@ function App() {
       y += 7;
     }
 
-    // =========================
-    // AI ANALYSIS
-    // =========================
-
     if (y > pageHeight - 30) {
       doc.addPage();
       y = 20;
     }
 
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
 
     doc.text(
@@ -719,35 +518,18 @@ function App() {
 
     y += 9;
 
-    doc.setFont(
-      "helvetica",
-      "normal"
-    );
-
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
 
     let aiText =
       result.ai_analysis ||
       "No AI analysis available.";
 
-    // Remove markdown symbols
     aiText = aiText
-      .replace(
-        /#{1,6}\s?/g,
-        ""
-      )
-      .replace(
-        /\*\*/g,
-        ""
-      )
-      .replace(
-        /\*/g,
-        ""
-      )
-      .replace(
-        /`/g,
-        ""
-      );
+      .replace(/#{1,6}\s?/g, "")
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "")
+      .replace(/`/g, "");
 
     y = addWrappedText(
       aiText,
@@ -756,10 +538,6 @@ function App() {
       180,
       5
     );
-
-    // =========================
-    // FOOTER
-    // =========================
 
     const totalPages =
       doc.internal.getNumberOfPages();
@@ -771,57 +549,43 @@ function App() {
     ) {
       doc.setPage(page);
 
-      doc.setFont(
-        "helvetica",
-        "normal"
-      );
-
+      doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
 
       doc.text(
         `AI Resume Analyzer | Page ${page} of ${totalPages}`,
         pageWidth / 2,
         pageHeight - 8,
-        {
-          align: "center",
-        }
+        { align: "center" }
       );
     }
-
-    // =========================
-    // SAVE PDF
-    // =========================
 
     let filename =
       result.resume_filename ||
       "resume";
 
     filename = filename
-      .replace(
-        /\.pdf$/i,
-        ""
-      )
-      .replace(
-        /[^a-zA-Z0-9_-]/g,
-        "_"
-      );
+      .replace(/\.pdf$/i, "")
+      .replace(/[^a-zA-Z0-9\_-]/g, "_");
 
     doc.save(
       `${filename}_analysis_report.pdf`
     );
   };
 
-  // =========================
-  // SKILL GAP BAR
-  // =========================
-
   const getGapPercentage = () => {
     return 100;
   };
 
-  // =========================
-  // RETURN UI
-  // =========================
+  const getScoreLabel = (score) => {
+    const value = Number(score || 0);
+
+    if (value >= 80) return "Excellent Match";
+    if (value >= 60) return "Good Match";
+    if (value >= 40) return "Moderate Match";
+
+    return "Needs Improvement";
+  };
 
   return (
     <div className="app">
@@ -829,20 +593,14 @@ function App() {
       {/* ================= HEADER ================= */}
 
       <header className="header">
-
         <div>
-
-          <h1>
-            AI Resume Analyzer
-          </h1>
+          <h1>AI Resume Analyzer</h1>
 
           <p>
-            Analyze your resume against a
-            job description using AI.
+            Analyze your resume against a job description
+            using AI-powered skill matching.
           </p>
-
         </div>
-
       </header>
 
       {/* ================= NAVIGATION ================= */}
@@ -892,20 +650,18 @@ function App() {
 
       <main className="container">
 
-        {/* ================================================= */}
-        {/* ANALYZER TAB */}
-        {/* ================================================= */}
+        {/* =================================================
+            ANALYZER
+        ================================================= */}
 
         {activeTab === "analyzer" && (
           <>
 
-            {/* Upload Resume */}
+            {/* Resume Upload */}
 
             <section className="card">
 
-              <h2>
-                1. Upload Resume
-              </h2>
+              <h2>1. Upload Resume</h2>
 
               <input
                 type="file"
@@ -922,7 +678,6 @@ function App() {
                     return;
                   }
 
-                  // PDF validation immediately
                   if (
                     selectedFile.type !==
                       "application/pdf" &&
@@ -937,6 +692,7 @@ function App() {
                     );
 
                     e.target.value = "";
+
                     return;
                   }
 
@@ -948,8 +704,7 @@ function App() {
 
               {resumeFile && (
                 <p className="file-name">
-                  Selected:{" "}
-                  {resumeFile.name}
+                  Selected: {resumeFile.name}
                 </p>
               )}
 
@@ -959,9 +714,24 @@ function App() {
 
             <section className="card">
 
-              <h2>
-                2. Job Description
-              </h2>
+              <div className="jd-header">
+
+                <div>
+                  <h2>
+                    2. Job Description
+                  </h2>
+
+                  <p className="jd-hint">
+                    Paste the complete job description
+                    you want to compare your resume with.
+                  </p>
+                </div>
+
+                <span className="jd-counter">
+                  {jobDescription.length} characters
+                </span>
+
+              </div>
 
               <textarea
                 value={jobDescription}
@@ -973,28 +743,41 @@ function App() {
 
                   setError("");
                 }}
-                placeholder="Paste the job description here..."
+                placeholder="Example: We are looking for a Data Engineer with experience in Python, SQL, ETL, AWS, Spark, and data pipelines..."
                 rows="10"
               />
 
-              {jobDescription.trim() &&
-                jobDescription.trim()
-                  .length < 50 && (
-                  <p
-                    style={{
-                      color: "#dc2626",
-                      marginTop: "8px",
-                    }}
-                  >
-                    Job description should
-                    contain at least 50
-                    characters.
-                  </p>
-                )}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginTop: "8px",
+                  gap: "10px",
+                }}
+              >
+
+                <span
+                  style={{
+                    color:
+                      jobDescription.trim()
+                        .length >= 50
+                        ? "#15803d"
+                        : "#667085",
+                    fontSize: "13px",
+                  }}
+                >
+                  {jobDescription.trim()
+                    .length >= 50
+                    ? "✓ Ready for analysis"
+                    : "Minimum 50 characters required"}
+                </span>
+
+              </div>
 
             </section>
 
-            {/* Analyze Button */}
+            {/* Analyze */}
 
             <button
               className="analyze-button"
@@ -1014,40 +797,56 @@ function App() {
               </div>
             )}
 
-            {/* ================================================= */}
-            {/* RESULTS */}
-            {/* ================================================= */}
+            {/* =================================================
+                RESULTS
+            ================================================= */}
 
             {result && (
               <section className="results">
 
+                {/* Result Header */}
+
                 <div
                   style={{
                     display: "flex",
-                    justifyContent:
-                      "space-between",
-                    alignItems:
-                      "center",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                     gap: "15px",
                     flexWrap: "wrap",
-                    marginBottom: "20px",
+                    marginBottom: "22px",
                   }}
                 >
 
-                  <h2>
-                    Analysis Result
-                  </h2>
+                  <div>
+                    <h2
+                      style={{
+                        margin: 0,
+                        fontSize: "28px",
+                      }}
+                    >
+                      Analysis Result
+                    </h2>
+
+                    <p
+                      style={{
+                        margin: "5px 0 0",
+                        color: "#667085",
+                      }}
+                    >
+                      Here's how your resume matches
+                      the selected job.
+                    </p>
+                  </div>
 
                   <button
                     className="analyze-button"
-                    onClick={
-                      downloadPDF
-                    }
+                    onClick={downloadPDF}
                     style={{
+                      width: "auto",
                       margin: 0,
                     }}
                   >
-                    📄 Download PDF Report
+                    📄 Download Report
                   </button>
 
                 </div>
@@ -1061,9 +860,7 @@ function App() {
                   </h3>
 
                   <p>
-                    <strong>
-                      File:
-                    </strong>{" "}
+                    <strong>File:</strong>{" "}
                     {result.resume_filename ||
                       resumeFile?.name ||
                       "Resume"}
@@ -1071,9 +868,7 @@ function App() {
 
                   {result.created_at && (
                     <p>
-                      <strong>
-                        Analyzed:
-                      </strong>{" "}
+                      <strong>Analyzed:</strong>{" "}
                       {formatDate(
                         result.created_at
                       )}
@@ -1082,19 +877,19 @@ function App() {
 
                 </div>
 
-                {/* SCORE CARDS */}
+                {/* Scores */}
 
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns:
-                      "repeat(auto-fit, minmax(240px, 1fr))",
+                      "repeat(auto-fit, minmax(280px, 1fr))",
                     gap: "20px",
-                    marginBottom: "25px",
+                    marginBottom: "22px",
                   }}
                 >
 
-                  {/* Match */}
+                  {/* Resume Match */}
 
                   <div className="match-card">
 
@@ -1103,9 +898,19 @@ function App() {
                     </h3>
 
                     <div className="percentage">
-                      {
+                      {result.match_percentage}%
+                    </div>
+
+                    <div
+                      style={{
+                        color: "#6d28d9",
+                        fontWeight: 700,
+                        marginBottom: "15px",
+                      }}
+                    >
+                      {getScoreLabel(
                         result.match_percentage
-                      }%
+                      )}
                     </div>
 
                     <div className="progress-bar">
@@ -1126,8 +931,8 @@ function App() {
                     </div>
 
                     <p className="match-text">
-                      Resume-to-job skill
-                      match.
+                      How closely your resume
+                      matches the job requirements.
                     </p>
 
                   </div>
@@ -1141,10 +946,20 @@ function App() {
                     </h3>
 
                     <div className="percentage">
-                      {
-                        result.ats_score ??
-                        "N/A"
-                      }%
+                      {result.ats_score ??
+                        "N/A"}
+                      {result.ats_score != null &&
+                        "%"}
+                    </div>
+
+                    <div
+                      style={{
+                        color: "#6d28d9",
+                        fontWeight: 700,
+                        marginBottom: "15px",
+                      }}
+                    >
+                      Resume Screening Score
                     </div>
 
                     <div className="progress-bar">
@@ -1154,8 +969,7 @@ function App() {
                         style={{
                           width: `${Math.min(
                             Number(
-                              result.ats_score ||
-                                0
+                              result.ats_score || 0
                             ),
                             100
                           )}%`,
@@ -1165,29 +979,23 @@ function App() {
                     </div>
 
                     <p className="match-text">
-                      Project-level
-                      ATS-style score based
-                      on skill match,
-                      resume sections and
-                      text completeness.
+                      Based on skill match, resume
+                      sections and text completeness.
                     </p>
 
                   </div>
 
                 </div>
 
-                {/* SKILL SUMMARY */}
+                {/* Skill Summary */}
 
                 <div className="skills-summary">
 
                   <div className="skill-count matched-count">
 
                     <span className="count-number">
-                      {
-                        result
-                          .matched_skills
-                          ?.length || 0
-                      }
+                      {result.matched_skills
+                        ?.length || 0}
                     </span>
 
                     <span className="count-label">
@@ -1199,11 +1007,8 @@ function App() {
                   <div className="skill-count missing-count">
 
                     <span className="count-number">
-                      {
-                        result
-                          .missing_skills
-                          ?.length || 0
-                      }
+                      {result.missing_skills
+                        ?.length || 0}
                     </span>
 
                     <span className="count-label">
@@ -1214,7 +1019,7 @@ function App() {
 
                 </div>
 
-                {/* MATCHED SKILLS */}
+                {/* Matched Skills */}
 
                 <div className="result-card">
 
@@ -1227,56 +1032,45 @@ function App() {
                       </h3>
 
                       <p>
-                        Skills detected in
-                        both your resume and
-                        the job description.
+                        Skills detected in both
+                        your resume and the job
+                        description.
                       </p>
 
                     </div>
 
                     <span className="skill-total matched-total">
-                      {
-                        result
-                          .matched_skills
-                          ?.length || 0
-                      }
+                      {result.matched_skills
+                        ?.length || 0}
                     </span>
 
                   </div>
 
                   <div className="skills">
 
-                    {result
-                      .matched_skills
-                      ?.length > 0 ? (
-
+                    {result.matched_skills?.length >
+                    0 ? (
                       result.matched_skills.map(
                         (skill) => (
-
                           <span
                             className="skill matched"
                             key={skill}
                           >
                             ✓ {skill}
                           </span>
-
                         )
                       )
-
                     ) : (
-
                       <p>
-                        No matched skills
-                        found.
+                        No matched skills found.
                       </p>
-
                     )}
 
                   </div>
 
                 </div>
 
-                {/* MISSING SKILLS */}
+                {/* Missing Skills */}
 
                 <div className="result-card">
 
@@ -1289,86 +1083,69 @@ function App() {
                       </h3>
 
                       <p>
-                        Skills required by
-                        the job but not
-                        detected in your
+                        Skills required by the job
+                        but not detected in your
                         resume.
                       </p>
 
                     </div>
 
                     <span className="skill-total missing-total">
-                      {
-                        result
-                          .missing_skills
-                          ?.length || 0
-                      }
+                      {result.missing_skills
+                        ?.length || 0}
                     </span>
 
                   </div>
 
                   <div className="skills">
 
-                    {result
-                      .missing_skills
-                      ?.length > 0 ? (
-
+                    {result.missing_skills?.length >
+                    0 ? (
                       result.missing_skills.map(
                         (skill) => (
-
                           <span
                             className="skill missing"
                             key={skill}
                           >
                             {skill}
                           </span>
-
                         )
                       )
-
                     ) : (
-
                       <p>
-                        No major missing
-                        skills found.
+                        No major missing skills
+                        found.
                       </p>
-
                     )}
 
                   </div>
 
                 </div>
 
-                {/* SKILL GAP VISUALIZATION */}
+                {/* Skill Gap */}
 
                 <div className="result-card">
 
                   <h3>
-                    📊 Skill Gap
-                    Visualization
+                    📊 Skill Gap Analysis
                   </h3>
 
                   <p>
-                    Skills required by
-                    the job that are
-                    currently missing
-                    from the resume.
+                    Skills required by the job
+                    that are currently missing
+                    from your resume.
                   </p>
 
-                  {result
-                    .missing_skills
-                    ?.length > 0 ? (
-
+                  {result.missing_skills?.length >
+                  0 ? (
                     <div
                       style={{
-                        marginTop:
-                          "20px",
+                        marginTop: "20px",
                       }}
                     >
 
                       {result.missing_skills.map(
                         (skill) => (
-
                           <div
                             key={skill}
                             style={{
@@ -1379,8 +1156,7 @@ function App() {
 
                             <div
                               style={{
-                                display:
-                                  "flex",
+                                display: "flex",
                                 justifyContent:
                                   "space-between",
                                 marginBottom:
@@ -1400,12 +1176,10 @@ function App() {
 
                             <div
                               style={{
-                                width:
-                                  "100%",
-                                height:
-                                  "10px",
+                                width: "100%",
+                                height: "9px",
                                 background:
-                                  "#e5e7eb",
+                                  "#eaecf0",
                                 borderRadius:
                                   "10px",
                                 overflow:
@@ -1416,10 +1190,9 @@ function App() {
                               <div
                                 style={{
                                   width: `${getGapPercentage()}%`,
-                                  height:
-                                    "100%",
+                                  height: "100%",
                                   background:
-                                    "#ef4444",
+                                    "#ea580c",
                                   borderRadius:
                                     "10px",
                                 }}
@@ -1428,66 +1201,53 @@ function App() {
                             </div>
 
                           </div>
-
                         )
                       )}
 
                     </div>
-
                   ) : (
-
                     <p>
-                      No skill gaps
-                      detected.
+                      No skill gaps detected.
                     </p>
-
                   )}
 
                 </div>
 
-                {/* EXPLAINABLE MATCHING */}
+                {/* Explainable Matching */}
 
                 {result.related_matches &&
-                  result.related_matches
-                    .length > 0 && (
+                  result.related_matches.length >
+                    0 && (
 
                     <div className="result-card">
 
                       <h3>
-                        🔎 Explainable
-                        Skill Matching
+                        🔎 Explainable Skill
+                        Matching
                       </h3>
 
                       <p>
-                        Related skills
-                        detected by the
-                        analyzer.
+                        Related skills detected
+                        by the analyzer.
                       </p>
 
                       <div
                         style={{
-                          marginTop:
-                            "15px",
+                          marginTop: "15px",
                         }}
                       >
 
                         {result.related_matches.map(
                           (item, index) => {
 
-                            let skillName =
-                              "";
-
-                            let matchedWith =
-                              "";
+                            let skillName = "";
+                            let matchedWith = "";
 
                             if (
                               typeof item ===
                               "string"
                             ) {
-
-                              skillName =
-                                item;
-
+                              skillName = item;
                             } else {
 
                               skillName =
@@ -1509,14 +1269,13 @@ function App() {
                               <div
                                 key={index}
                                 style={{
-                                  padding:
-                                    "12px",
+                                  padding: "13px",
                                   marginBottom:
                                     "10px",
                                   borderRadius:
-                                    "8px",
+                                    "9px",
                                   background:
-                                    "#f8fafc",
+                                    "#f8f9fc",
                                   border:
                                     "1px solid #e2e8f0",
                                 }}
@@ -1531,9 +1290,7 @@ function App() {
                                     {" "}
                                     → related to{" "}
                                     <strong>
-                                      {
-                                        matchedWith
-                                      }
+                                      {matchedWith}
                                     </strong>
                                   </span>
                                 )}
@@ -1546,13 +1303,11 @@ function App() {
                       </div>
 
                     </div>
-
                   )}
 
-                {/* JOB DESCRIPTION */}
+                {/* Job Description */}
 
                 {result.job_description && (
-
                   <div className="result-card">
 
                     <h3>
@@ -1561,39 +1316,79 @@ function App() {
 
                     <div
                       style={{
-                        maxHeight:
-                          "250px",
-                        overflowY:
-                          "auto",
-                        padding:
-                          "15px",
-                        marginTop:
-                          "10px",
-                        background:
-                          "#f8fafc",
-                        borderRadius:
-                          "8px",
-                        whiteSpace:
-                          "pre-wrap",
+                        maxHeight: "260px",
+                        overflowY: "auto",
+                        padding: "16px",
+                        marginTop: "12px",
+                        background: "#f8f9fc",
+                        border:
+                          "1px solid #eaecf0",
+                        borderRadius: "9px",
+                        whiteSpace: "pre-wrap",
+                        color: "#475467",
+                        lineHeight: 1.7,
                       }}
                     >
-                      {
-                        result.job_description
-                      }
+                      {result.job_description}
                     </div>
 
                   </div>
-
                 )}
 
-                {/* AI CAREER ANALYSIS */}
+                {/* AI Recommendations */}
 
                 <div className="result-card">
 
-                  <h3>
-                    🤖 AI Career
-                    Analysis
-                  </h3>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent:
+                        "space-between",
+                      alignItems:
+                        "center",
+                      gap: "12px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+
+                    <div>
+
+                      <h3>
+                        🤖 AI Career
+                        Recommendations
+                      </h3>
+
+                      <p
+                        style={{
+                          marginTop: "4px",
+                        }}
+                      >
+                        Personalized guidance based
+                        on your resume and target job.
+                      </p>
+
+                    </div>
+
+                    <span
+                      style={{
+                        padding:
+                          "6px 11px",
+                        borderRadius:
+                          "999px",
+                        background:
+                          "#ede9fe",
+                        color:
+                          "#6d28d9",
+                        fontSize:
+                          "12px",
+                        fontWeight:
+                          700,
+                      }}
+                    >
+                      AI Powered
+                    </span>
+
+                  </div>
 
                   <div className="ai-analysis">
 
@@ -1612,9 +1407,9 @@ function App() {
           </>
         )}
 
-        {/* ================================================= */}
-        {/* DASHBOARD */}
-        {/* ================================================= */}
+        {/* =================================================
+            DASHBOARD
+        ================================================= */}
 
         {activeTab === "dashboard" && (
 
@@ -1637,16 +1432,12 @@ function App() {
 
               <button
                 className="refresh-button"
-                onClick={
-                  loadHistory
-                }
+                onClick={loadHistory}
               >
                 ↻ Refresh
               </button>
 
             </div>
-
-            {/* Statistics */}
 
             <div className="stats-grid">
 
@@ -1712,26 +1503,18 @@ function App() {
 
             </div>
 
-            {/* Common Missing Skills */}
-
             <div className="dashboard-card">
 
               <div className="dashboard-card-header">
 
-                <div>
+                <h3>
+                  Common Missing Skills
+                </h3>
 
-                  <h3>
-                    Common Missing
-                    Skills
-                  </h3>
-
-                  <p>
-                    Skills frequently
-                    missing across
-                    analyzed jobs.
-                  </p>
-
-                </div>
+                <p>
+                  Skills frequently missing
+                  across analyzed jobs.
+                </p>
 
               </div>
 
@@ -1777,16 +1560,13 @@ function App() {
                 <div className="empty-state">
 
                   <p>
-                    No missing-skill
-                    data available
-                    yet.
+                    No missing-skill data
+                    available yet.
                   </p>
 
                   <p>
-                    Analyze a few
-                    resumes to see
-                    common skill gaps
-                    here.
+                    Analyze a few resumes to
+                    see common skill gaps here.
                   </p>
 
                 </div>
@@ -1796,11 +1576,12 @@ function App() {
             </div>
 
           </section>
+
         )}
 
-        {/* ================================================= */}
-        {/* HISTORY */}
-        {/* ================================================= */}
+        {/* =================================================
+            HISTORY
+        ================================================= */}
 
         {activeTab === "history" && (
 
@@ -1815,17 +1596,15 @@ function App() {
                 </h2>
 
                 <p>
-                  View and manage your
-                  previous analyses.
+                  View and manage your previous
+                  resume analyses.
                 </p>
 
               </div>
 
               <button
                 className="refresh-button"
-                onClick={
-                  loadHistory
-                }
+                onClick={loadHistory}
               >
                 ↻ Refresh
               </button>
@@ -1842,8 +1621,7 @@ function App() {
 
               </div>
 
-            ) : history.length ===
-              0 ? (
+            ) : history.length === 0 ? (
 
               <div className="empty-state">
 
@@ -1852,9 +1630,8 @@ function App() {
                 </h3>
 
                 <p>
-                  Go to Resume Analyzer
-                  and analyze your first
-                  resume.
+                  Go to Resume Analyzer and
+                  analyze your first resume.
                 </p>
 
               </div>
@@ -1863,202 +1640,188 @@ function App() {
 
               <div className="history-list">
 
-                {history.map(
-                  (item) => {
+                {history.map((item) => {
 
-                    const matchedSkills =
-                      item.matched_skills
-                        ? item.matched_skills
-                            .split(",")
-                            .map(
-                              (skill) =>
-                                skill.trim()
-                            )
-                            .filter(
-                              Boolean
-                            )
-                        : [];
+                  const matchedSkills =
+                    item.matched_skills
+                      ? item.matched_skills
+                          .split(",")
+                          .map((skill) =>
+                            skill.trim()
+                          )
+                          .filter(Boolean)
+                      : [];
 
-                    const missingSkills =
-                      item.missing_skills
-                        ? item.missing_skills
-                            .split(",")
-                            .map(
-                              (skill) =>
-                                skill.trim()
-                            )
-                            .filter(
-                              Boolean
-                            )
-                        : [];
+                  const missingSkills =
+                    item.missing_skills
+                      ? item.missing_skills
+                          .split(",")
+                          .map((skill) =>
+                            skill.trim()
+                          )
+                          .filter(Boolean)
+                      : [];
 
-                    return (
+                  return (
 
-                      <div
-                        className="history-card"
-                        key={item.id}
-                      >
+                    <div
+                      className="history-card"
+                      key={item.id}
+                    >
 
-                        <div className="history-top">
+                      <div className="history-top">
 
-                          <div>
+                        <div>
 
-                            <span className="analysis-number">
-                              Analysis #
-                              {item.id}
-                            </span>
+                          <span className="analysis-number">
+                            Analysis #{item.id}
+                          </span>
 
-                            <h3>
-                              {item.resume_filename ||
-                                "Resume Analysis"}
-                            </h3>
+                          <h3>
+                            {item.resume_filename ||
+                              "Resume Analysis"}
+                          </h3>
 
-                            {item.created_at && (
-                              <small>
-                                {formatDate(
-                                  item.created_at
-                                )}
-                              </small>
-                            )}
-
-                          </div>
-
-                          <div className="history-match">
-                            {
-                              item.match_percentage
-                            }%
-                          </div>
+                          {item.created_at && (
+                            <small>
+                              {formatDate(
+                                item.created_at
+                              )}
+                            </small>
+                          )}
 
                         </div>
 
-                        <div className="history-progress">
-
-                          <div
-                            style={{
-                              width: `${Math.min(
-                                Number(
-                                  item.match_percentage ||
-                                    0
-                                ),
-                                100
-                              )}%`,
-                            }}
-                          />
-
+                        <div className="history-match">
+                          {item.match_percentage}%
                         </div>
 
-                        {item.job_description && (
+                      </div>
 
-                          <div
+                      <div className="history-progress">
+
+                        <div
+                          style={{
+                            width: `${Math.min(
+                              Number(
+                                item.match_percentage ||
+                                  0
+                              ),
+                              100
+                            )}%`,
+                          }}
+                        />
+
+                      </div>
+
+                      {item.job_description && (
+
+                        <div
+                          style={{
+                            marginTop: "15px",
+                            padding: "13px",
+                            background:
+                              "#f8f9fc",
+                            border:
+                              "1px solid #eaecf0",
+                            borderRadius:
+                              "8px",
+                          }}
+                        >
+
+                          <strong>
+                            Job Description:
+                          </strong>
+
+                          <p
                             style={{
-                              marginTop:
-                                "15px",
-                              padding:
-                                "12px",
-                              background:
-                                "#f8fafc",
-                              borderRadius:
-                                "8px",
+                              marginBottom: 0,
                             }}
                           >
-
-                            <strong>
-                              Job
-                              Description:
-                            </strong>
-
-                            <p
-                              style={{
-                                marginBottom:
+                            {item.job_description
+                              .length > 250
+                              ? `${item.job_description.slice(
                                   0,
-                              }}
-                            >
-                              {item
-                                .job_description
-                                .length >
-                              250
-                                ? `${item.job_description.slice(
-                                    0,
-                                    250
-                                  )}...`
-                                : item.job_description}
-                            </p>
-
-                          </div>
-
-                        )}
-
-                        <div className="history-skills">
-
-                          <div>
-
-                            <strong>
-                              Matched:
-                            </strong>
-
-                            {matchedSkills.length >
-                            0
-                              ? matchedSkills.join(
-                                  ", "
-                                )
-                              : " None"}
-
-                          </div>
-
-                          <div>
-
-                            <strong>
-                              Missing:
-                            </strong>
-
-                            {missingSkills.length >
-                            0
-                              ? missingSkills.join(
-                                  ", "
-                                )
-                              : " None"}
-
-                          </div>
+                                  250
+                                )}...`
+                              : item.job_description}
+                          </p>
 
                         </div>
 
-                        <div className="history-actions">
+                      )}
 
-                          <button
-                            className="view-button"
-                            onClick={() =>
-                              handleViewDetails(
-                                item.id
-                              )
-                            }
-                          >
-                            View Details
-                          </button>
+                      <div className="history-skills">
 
-                          <button
-                            className="delete-button"
-                            onClick={() =>
-                              handleDelete(
-                                item.id
+                        <div>
+
+                          <strong>
+                            Matched:
+                          </strong>
+
+                          {matchedSkills.length >
+                          0
+                            ? matchedSkills.join(
+                                ", "
                               )
-                            }
-                          >
-                            Delete
-                          </button>
+                            : " None"}
+
+                        </div>
+
+                        <div>
+
+                          <strong>
+                            Missing:
+                          </strong>
+
+                          {missingSkills.length >
+                          0
+                            ? missingSkills.join(
+                                ", "
+                              )
+                            : " None"}
 
                         </div>
 
                       </div>
 
-                    );
-                  }
-                )}
+                      <div className="history-actions">
+
+                        <button
+                          className="view-button"
+                          onClick={() =>
+                            handleViewDetails(
+                              item.id
+                            )
+                          }
+                        >
+                          View Details
+                        </button>
+
+                        <button
+                          className="delete-button"
+                          onClick={() =>
+                            handleDelete(
+                              item.id
+                            )
+                          }
+                        >
+                          Delete
+                        </button>
+
+                      </div>
+
+                    </div>
+
+                  );
+                })}
 
               </div>
 
             )}
 
           </section>
+
         )}
 
       </main>
