@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings
 
 class GeminiSettings(BaseSettings):
 
-    GEMINI_API_KEY: str
+    GEMINI_API_KEY: str = ""
 
     class Config:
         env_file = ".env"
@@ -16,15 +16,6 @@ class GeminiSettings(BaseSettings):
 
 
 settings = GeminiSettings()
-
-
-# =========================================================
-# GEMINI CLIENT
-# =========================================================
-
-client = genai.Client(
-    api_key=settings.GEMINI_API_KEY
-)
 
 
 # =========================================================
@@ -134,14 +125,19 @@ IMPORTANT RULES:
     # GEMINI REQUEST
     # =====================================================
 
-    response = client.models.generate_content(
-        model="gemini-3-flash-preview",
-        contents=prompt
-    )
+    if not settings.GEMINI_API_KEY:
+        return "Gemini API key is not configured. Please set GEMINI_API_KEY in your server environment to enable AI analysis."
 
+    try:
+        client = genai.Client(
+            api_key=settings.GEMINI_API_KEY
+        )
 
-    # =====================================================
-    # RETURN AI RESPONSE
-    # =====================================================
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
 
-    return response.text
+        return response.text
+    except Exception as e:
+        return f"AI analysis temporarily unavailable: {str(e)}"

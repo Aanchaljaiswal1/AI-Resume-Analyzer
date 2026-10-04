@@ -3,6 +3,9 @@ import ReactMarkdown from "react-markdown";
 import jsPDF from "jspdf";
 import "./App.css";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL?.replace(/\/+$/, "") || "http://127.0.0.1:8000";
+
 function App() {
   const [resumeFile, setResumeFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
@@ -25,7 +28,7 @@ function App() {
       setHistoryLoading(true);
 
       const response = await fetch(
-        "http://127.0.0.1:8000/history"
+        `${API_BASE_URL}/history`
       );
 
       if (!response.ok) {
@@ -94,7 +97,7 @@ function App() {
       formData.append("file", resumeFile);
 
       const resumeResponse = await fetch(
-        "http://127.0.0.1:8000/upload-resume",
+        `${API_BASE_URL}/upload-resume`,
         {
           method: "POST",
           body: formData,
@@ -129,7 +132,7 @@ function App() {
       // =========================
 
       const analyzeResponse = await fetch(
-        "http://127.0.0.1:8000/analyze",
+        `${API_BASE_URL}/analyze`,
         {
           method: "POST",
 
@@ -184,7 +187,7 @@ function App() {
       setError("");
 
       const response = await fetch(
-        `http://127.0.0.1:8000/history/${id}`
+        `${API_BASE_URL}/history/${id}`
       );
 
       if (!response.ok) {
@@ -219,7 +222,7 @@ function App() {
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/history/${id}`,
+        `${API_BASE_URL}/history/${id}`,
         {
           method: "DELETE",
         }

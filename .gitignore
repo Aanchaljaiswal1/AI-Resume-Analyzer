@@ -1,0 +1,30 @@
+# Environments
+.env
+.env.local
+.env.*.local
+venv/
+env/
+ENV/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite3
+resumes.db
+
+# Node dependencies & builds
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Nested accidentally cloned repos
+AI-Resume-Analyzer/

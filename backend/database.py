@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 
 class DatabaseSettings(BaseSettings):
 
-    DATABASE_URL: str
+    DATABASE_URL: str = "sqlite:///./resumes.db"
 
     class Config:
         env_file = ".env"
@@ -14,10 +14,20 @@ class DatabaseSettings(BaseSettings):
 
 settings = DatabaseSettings()
 
+db_url = settings.DATABASE_URL
+
+# Fix legacy postgres:// URL scheme from some cloud providers
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+engine_kwargs = {"echo": True}
+
+if db_url.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
 
 engine = create_engine(
-    settings.DATABASE_URL,
-    echo=True
+    db_url,
+    **engine_kwargs
 )
 
 
